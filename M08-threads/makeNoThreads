@@ -1,0 +1,24 @@
+#
+# this makefile will compile and link the "nonThreadedApp" application
+# 
+# =======================================================
+#                  nonThreadedApp
+# =======================================================
+#
+# FINAL BINARY Target
+./bin/nonThreadedApp : ./obj/nonThreadedApp.o
+	cc ./obj/nonThreadedApp.o -o ./bin/nonThreadedApp
+#
+# =======================================================
+#                     Dependencies
+# =======================================================                     
+./obj/nonThreadedApp.o : ./src/nonThreadedApp.c
+	cc -c ./src/nonThreadedApp.c -o ./obj/nonThreadedApp.o
+#
+# =======================================================
+# Other targets
+# =======================================================                     
+clean:
+	rm -f ./bin/nonThreadedApp*
+	rm -f ./obj/nonThreadedApp.*
+	rm -f ./src/nonThreadedApp.c~

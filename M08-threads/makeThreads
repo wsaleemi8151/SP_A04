@@ -1,0 +1,26 @@
+#
+# this makefile will compile and link the "threadedApp" application
+# 
+# =======================================================
+#                  threadedApp
+#   - notice in the linking line that I am linking with
+#     an external library called "pthread"
+# =======================================================
+#
+# FINAL BINARY Target
+./bin/threadedApp : ./obj/threadedApp.o
+	cc ./obj/threadedApp.o -o ./bin/threadedApp -lpthread
+#
+# =======================================================
+#                     Dependencies
+# =======================================================                     
+./obj/threadedApp.o : ./src/threadedApp.c
+	cc -c ./src/threadedApp.c -o ./obj/threadedApp.o
+#
+# =======================================================
+# Other targets
+# =======================================================                     
+clean:
+	rm -f ./bin/threadedApp*
+	rm -f ./obj/threadedApp.*
+	rm -f ./src/threadedApp.c~
