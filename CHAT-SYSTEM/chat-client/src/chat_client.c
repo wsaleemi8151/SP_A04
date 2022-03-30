@@ -65,9 +65,9 @@ int main(void)
   /* tell the user that the 5 messages are done ... */
   shouldBlank = 1;
   sprintf(buf,"Messaging is complete ... destroying window in 5 seconds");
-  display_win(msg_win, buf, 0, shouldBlank);
+  display_win(msg_win, buf, 1, shouldBlank);
   
-  sleep(5);                   /* to get a delay */
+  sleep(1);                   /* to get a delay */
      
   destroy_win(chat_win);
   destroy_win(msg_win);
@@ -75,7 +75,7 @@ int main(void)
 }
      
 WINDOW *create_newwin(int height, int width, int starty, int startx)
-{       
+{ 
   WINDOW *local_win;
      
   local_win = newwin(height, width, starty, startx);
@@ -92,6 +92,9 @@ void input_win(WINDOW *win, char *word)
   int maxrow, maxcol, row = 1, col = 0;
      
   blankWin(win);                          /* make it a clean window */
+
+  mvwaddstr(win, 0, 50, " Chat Window ");
+
   getmaxyx(win, maxrow, maxcol);          /* get window size */
   bzero(word, BUFSIZ);
   wmove(win, 1, 1);                       /* position cusor at top */
@@ -126,7 +129,10 @@ void input_win(WINDOW *win, char *word)
      
 void display_win(WINDOW *win, char *word, int whichRow, int shouldBlank)
 {
+
   if(shouldBlank == 1) blankWin(win);                /* make it a clean window */
+  mvwaddstr(win, 0, 50, " Message Window ");
+
   wmove(win, (whichRow+1), 1);                       /* position cusor at approp row */
   wprintw(win, word);
   wrefresh(win);
