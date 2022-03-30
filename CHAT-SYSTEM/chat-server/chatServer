@@ -1,0 +1,30 @@
+#
+# this makefile will compile and link the "Chat Server" application
+# 
+# =======================================================
+#                  Chat Server
+# =======================================================
+# FINAL BINARY Target
+./bin/chatServer : ./obj/chat_server.o ../Common/obj/common.o 
+	cc ./obj/chat_server.o ../Common/obj/common.o -o ./bin/chatServer
+#
+# =======================================================
+#                     Dependencies
+# =======================================================                     
+./obj/chat_server.o : ./src/chat_server.c ./inc/chat_server.h  
+	cc -c ./src/chat_server.c -o ./obj/chat_server.o
+	                   
+./obj/common.o : ../Common/src/common.c ../Common/inc/common.h  
+	cc -c ../Common/src/common.c -o ../Common/obj/common.o
+	  
+#
+# =======================================================
+# Other targets
+# ======================================================= 
+all: ./bin/chatServer
+
+clean: 
+	rm -f ./bin/chatServer*
+	rm -f ./obj/chat_server.*
+	rm -f ../Common/obj/common.*
+

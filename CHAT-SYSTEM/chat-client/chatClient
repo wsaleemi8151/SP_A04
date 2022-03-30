@@ -1,0 +1,30 @@
+#
+# this makefile will compile and link the "Chat Client" application
+# 
+# =======================================================
+#                  Chat Client
+# =======================================================
+# FINAL BINARY Target
+./bin/chatClient : ./obj/chat_client.o ../Common/obj/common.o 
+	cc ./obj/chat_client.o ../Common/obj/common.o -lncurses -o ./bin/chatClient
+#
+# =======================================================
+#                     Dependencies
+# =======================================================                     
+./obj/chat_client.o : ./src/chat_client.c ./inc/chat_client.h  
+	cc -c ./src/chat_client.c -o ./obj/chat_client.o
+	                   
+../Common/obj/common.o : ../Common/src/common.c ../Common/inc/common.h  
+	cc -c ../Common/src/common.c -o ../Common/obj/common.o
+	  
+#
+# =======================================================
+# Other targets
+# ======================================================= 
+all: ./bin/chatClient
+
+clean: 
+	rm -f ./bin/chatClient*
+	rm -f ./obj/chat_client.*
+	rm -f ../Common/obj/common.*
+

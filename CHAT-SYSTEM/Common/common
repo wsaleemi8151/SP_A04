@@ -1,0 +1,25 @@
+#
+# this makefile will compile and link the "Common" application
+# 
+# =======================================================
+#                  Common
+# =======================================================
+# FINAL BINARY Target
+./bin/common : ./obj/common.o 
+	cc ./obj/common.o -o ./bin/common
+#
+# =======================================================
+#                     Dependencies
+# =======================================================                      
+./obj/common.o : ./src/common.c ./inc/common.h
+	cc -c ./src/common.c -o ./obj/common.o
+
+#
+# =======================================================
+# Other targets
+# ======================================================= 
+all: ./bin/common
+
+clean: 
+	rm -f ./bin/common*
+	rm -f ./obj/common.*
