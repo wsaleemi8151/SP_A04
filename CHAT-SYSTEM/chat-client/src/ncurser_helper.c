@@ -6,6 +6,7 @@
 #include <string.h>
 #include <ncurses.h>
 
+#include "../../Common/inc/common.h"
 #include "../inc/ncurser_helper.h"
 
 WINDOW *create_newwin(int height, int width, int starty, int startx)
@@ -30,7 +31,7 @@ void input_win(WINDOW *win, char *word)
     mvwaddstr(win, 0, (COLS / 2 - 10), " Chat Window ");
 
     getmaxyx(win, maxrow, maxcol); /* get window size */
-    bzero(word, BUFSIZ);
+    bzero(word, INPUT_MESG_LENGTH);
     wmove(win, 1, 1); /* position cusor at top */
     for (i = 0; (ch = wgetch(win)) != '\n'; i++)
     {
@@ -57,6 +58,11 @@ void input_win(WINDOW *win, char *word)
                 wrefresh(win);
                 wprintw(win, "%c", word[i]); /* display the char recv'd */
             }
+        }
+
+        if(strlen(word) == INPUT_MESG_LENGTH)
+        {
+            break;
         }
     }
 } /* input_win */

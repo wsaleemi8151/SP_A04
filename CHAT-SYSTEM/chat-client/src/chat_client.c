@@ -12,18 +12,29 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <pthread.h>
 
 #include <ncurses.h>
 
+#include "../inc/chat_client.h"
 #include "../inc/ncurser_helper.h"
+#include "../../Common/inc/common.h"
 
 int main(void)
 {
+    return InitChatClient();
+}
+
+
+int InitChatClient(void)
+{
+    pthread_t tid[2]; // for holding message and chat windows logic threads
+
     WINDOW *chat_win, *msg_win;
     int chat_startx, chat_starty, chat_width, chat_height;
     int msg_startx, msg_starty, msg_width, msg_height, i;
     int shouldBlank;
-    char buf[BUFSIZ];
+    char buf[INPUT_MESG_LENGTH];
 
     initscr(); /* Start curses mode            */
     cbreak();
@@ -51,13 +62,11 @@ int main(void)
     /* create the input window */
     msg_win = create_newwin(msg_height, msg_width, msg_starty, msg_startx);
     scrollok(msg_win, TRUE);
-
     wbkgd(msg_win, COLOR_PAIR(1));
 
     /* create the output window */
     chat_win = create_newwin(chat_height, chat_width, chat_starty, chat_startx);
     scrollok(chat_win, TRUE);
-
     wbkgd(chat_win, COLOR_PAIR(2));
 
     /* allow the user to input 5 messages for display */
@@ -66,7 +75,7 @@ int main(void)
         input_win(chat_win, buf);
         display_win(msg_win, buf, i, shouldBlank);
     }
-    sleep(3); /* to get a delay */
+    sleep(1); /* to get a delay */
 
     /* tell the user that the 5 messages are done ... */
     shouldBlank = 1;
@@ -78,4 +87,6 @@ int main(void)
     destroy_win(chat_win);
     destroy_win(msg_win);
     endwin();
+
+    return 1;
 }

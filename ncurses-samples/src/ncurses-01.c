@@ -93,7 +93,7 @@ void input_win(WINDOW *win, char *word)
      
   blankWin(win);                          /* make it a clean window */
   getmaxyx(win, maxrow, maxcol);          /* get window size */
-  bzero(word, BUFSIZ);
+  bzero(word, INPUT_MESG_LENGTH);
   wmove(win, 1, 1);                       /* position cusor at top */
   for (i = 0; (ch = wgetch(win)) != '\n'; i++) 
   {
