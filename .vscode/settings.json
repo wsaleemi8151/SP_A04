@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "ncurser_helper.h": "c",
+        "ncurses.h": "c"
+    }
+}
