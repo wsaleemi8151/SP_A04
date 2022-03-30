@@ -1,7 +1,6 @@
 
 #include <ncurses.h>
 
-
 WINDOW *create_newwin(int, int, int, int);
 void destroy_win(WINDOW *);
 void input_win(WINDOW *, char *);

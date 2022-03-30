@@ -6,7 +6,7 @@
 # =======================================================
 # FINAL BINARY Target
 ./bin/chatServer : ./obj/chat_server.o ../Common/obj/common.o 
-	cc ./obj/chat_server.o ../Common/obj/common.o -o ./bin/chatServer
+	cc ./obj/chat_server.o ../Common/obj/common.o -lpthread -o ./bin/chatServer
 #
 # =======================================================
 #                     Dependencies
@@ -27,4 +27,3 @@ clean:
 	rm -f ./bin/chatServer*
 	rm -f ./obj/chat_server.*
 	rm -f ../Common/obj/common.*
-

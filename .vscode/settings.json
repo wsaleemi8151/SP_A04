@@ -2,6 +2,9 @@
     "files.associations": {
         "ncurser_helper.h": "c",
         "ncurses.h": "c",
-        "common.h": "c"
+        "common.h": "c",
+        "pthread.h": "c",
+        "chat_client.h": "c",
+        "chat_server.h": "c"
     }
 }

@@ -31,6 +31,7 @@ void input_win(WINDOW *win, char *word)
     mvwaddstr(win, 0, (COLS / 2 - 10), " Chat Window ");
 
     getmaxyx(win, maxrow, maxcol); /* get window size */
+
     bzero(word, INPUT_MESG_LENGTH);
     wmove(win, 1, 1); /* position cusor at top */
     for (i = 0; (ch = wgetch(win)) != '\n'; i++)
