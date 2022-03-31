@@ -108,7 +108,7 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
      */
     sprintf(buf, "[CLIENT] : Getting STREAM Socket to talk to SERVER\n");
     display_win(msg_win, buf, 1, CLEAR_WINDOW);
-    sleep(3);
+    sleep(1);
 
     fflush(stdout);
     if ((my_server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -116,7 +116,7 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
         sprintf(buf, "[CLIENT] : Getting Client Socket - FAILED\n");
         display_win(msg_win, buf, 1, CLEAR_WINDOW);
 
-        sleep(3);
+        sleep(1);
 
         destroy_win(chat_win);
         destroy_win(msg_win);
@@ -130,7 +130,7 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
      */
     sprintf(buf, "[CLIENT] : Connecting to SERVER\n");
     display_win(msg_win, buf, 1, CLEAR_WINDOW);
-    sleep(3);
+    sleep(1);
 
     fflush(stdout);
     if (connect(my_server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
@@ -139,7 +139,7 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
         display_win(msg_win, buf, 1, CLEAR_WINDOW);
         close(my_server_socket);
 
-        sleep(3);
+        sleep(1);
 
         destroy_win(chat_win);
         destroy_win(msg_win);
@@ -164,7 +164,6 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
         fflush(stdout);
 
         input_win(chat_win, buf);
-        // fgets(buf, sizeof(buf), stdin);
 
         if (buf[strlen(buf) - 1] == '\n')
             buf[strlen(buf) - 1] = '\0';
@@ -183,7 +182,6 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
 
             display_win(msg_win, buf, i, NOT_CLEAR_WINDOW);
             i++;
-            // printf("Result of command:\n%s\n\n", buf);
         }
     }
 

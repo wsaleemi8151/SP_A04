@@ -22,11 +22,15 @@
 #include <pthread.h>
 
 #include "../inc/chat_server.h"
+#include "../../Common/inc/common.h"
 
 #define PORT 5000
 
 // global variable to keep count of the number of clients ...
 static int numClients = 0;
+static int MessageQueueCount = 0;
+
+ChatMessage MessageQueue[MESSAGE_QUEUE_LENGTH];
 
 int main(void)
 {
@@ -35,6 +39,7 @@ int main(void)
 
 int InitChatServer(void)
 {
+
     int server_socket, client_socket;
     int client_len;
     struct sockaddr_in client_addr, server_addr;
@@ -121,6 +126,10 @@ int InitChatServer(void)
             fflush(stdout);
             return 5;
         }
+        else
+        {
+            
+        }
 
         printf("[SERVER] : pthread_create() successful for CLIENT-%02d\n", numClients);
         fflush(stdout);
@@ -150,8 +159,8 @@ int InitChatServer(void)
 void *socketThread(void *clientSocket)
 {
     // used for accepting incoming command and also holding the command's response
-    char buffer[BUFSIZ];
-    char message[BUFSIZ];
+    char buffer[INPUT_MESG_LENGTH];
+    char message[INPUT_MESG_LENGTH];
     int sizeOfRead;
     int timeToExit;
     int numBytesRead;
@@ -160,23 +169,35 @@ void *socketThread(void *clientSocket)
     int clSocket = *((int *)clientSocket);
 
     /* Clear out the input Buffer */
-    memset(buffer, 0, BUFSIZ);
+    memset(buffer, 0, INPUT_MESG_LENGTH);
 
     // increment the numClients
     int iAmClient = numClients; // assumes that another connection from another client
                                 // hasn't been created in the meantime
 
-    numBytesRead = read(clSocket, buffer, BUFSIZ);
+    numBytesRead = read(clSocket, buffer, INPUT_MESG_LENGTH);
 
     while (strcmp(buffer, "quit") != 0)
     {
         /* we're actually not going to execute the command - but we could if we wanted */
         sprintf(message, "[SERVER (Thread-%02d)] : Received %d bytes - command - %s\n", iAmClient, numBytesRead, buffer);
-        write(clSocket, message, strlen(message));
 
+        // ----
+        write(clSocket, message, strlen(message));
+        if (MessageQueueCount < MESSAGE_QUEUE_LENGTH)
+        {
+            // Update message queue when a message received
+            MessageQueue[MessageQueueCount].client_addr = clSocket;
+            strcpy(MessageQueue[MessageQueueCount].message, message);
+            MessageQueueCount++;
+        }
+        else
+        {
+            printf("\n[SERVER] : Message Queue already full ...\n");
+        }
         // clear out and get the next command and process
-        memset(buffer, 0, BUFSIZ);
-        numBytesRead = read(clSocket, buffer, BUFSIZ);
+        memset(buffer, 0, INPUT_MESG_LENGTH);
+        numBytesRead = read(clSocket, buffer, INPUT_MESG_LENGTH);
     }
     close(clSocket);
 
