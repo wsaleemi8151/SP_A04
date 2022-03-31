@@ -150,6 +150,8 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
 
     done = 1;
     blankWin(msg_win);
+
+    i = 1;
     while (done)
     {
         /* clear out the contents of buffer (if any) */
@@ -159,7 +161,6 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
          * now that we have a connection, get a commandline from
          * the user, and fire it off to the server
          */
-        printf("Enter a command [date | who | df | <enter your own command> | quit] >>> ");
         fflush(stdout);
 
         input_win(chat_win, buf);
@@ -181,6 +182,7 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
             len = read(my_server_socket, buf, sizeof(buf));
 
             display_win(msg_win, buf, i, NOT_CLEAR_WINDOW);
+            i++;
             // printf("Result of command:\n%s\n\n", buf);
         }
     }
