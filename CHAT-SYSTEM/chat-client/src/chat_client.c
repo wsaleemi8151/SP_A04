@@ -66,60 +66,9 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
     char buf[INPUT_MESG_LENGTH];
     
     InitializeChatWindows(buf);
-    // ---------------------------- Socket Implementation for Client --------------------------------
 
-    /*
-     * initialize struct to get a socket to host
-     */
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    memcpy(&server_addr.sin_addr, host->h_addr, host->h_length); // copy the host's internal IP addr into the server_addr struct
-    server_addr.sin_port = htons(PORT);
+    InitializeChatSocket(server_addr, host, buf);
 
-    /*
-     * get a socket for communications
-     */
-    sprintf(buf, "[CLIENT] : Getting STREAM Socket to talk to SERVER\n");
-    display_win(msg_win, buf, 1, CLEAR_WINDOW);
-    sleep(1);
-
-    fflush(stdout);
-    if ((my_server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
-        sprintf(buf, "[CLIENT] : Getting Client Socket - FAILED\n");
-        display_win(msg_win, buf, 1, CLEAR_WINDOW);
-
-        sleep(1);
-
-        destroy_win(chat_win);
-        destroy_win(msg_win);
-        endwin();
-
-        return 3;
-    }
-
-    /*
-     * attempt a connection to server
-     */
-    sprintf(buf, "[CLIENT] : Connecting to SERVER\n");
-    display_win(msg_win, buf, 1, CLEAR_WINDOW);
-    sleep(1);
-
-    fflush(stdout);
-    if (connect(my_server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    {
-        sprintf(buf, "[CLIENT] : Connect to Server - FAILED\n");
-        display_win(msg_win, buf, 1, CLEAR_WINDOW);
-        close(my_server_socket);
-
-        sleep(1);
-
-        destroy_win(chat_win);
-        destroy_win(msg_win);
-        endwin();
-
-        return 4;
-    }
 
     clientDone = 1;
     blankWin(msg_win);
@@ -210,5 +159,64 @@ void InitializeChatWindows(char * buf)
     chat_win = create_newwin(chat_height, chat_width, chat_starty, chat_startx);
     scrollok(chat_win, TRUE);
     wbkgd(chat_win, COLOR_PAIR(2));
+
+}
+
+int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host, char * buf)
+{
+    // ---------------------------- Socket Implementation for Client --------------------------------
+
+    /*
+     * initialize struct to get a socket to host
+     */
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    memcpy(&server_addr.sin_addr, host->h_addr, host->h_length); // copy the host's internal IP addr into the server_addr struct
+    server_addr.sin_port = htons(PORT);
+
+    /*
+     * get a socket for communications
+     */
+    sprintf(buf, "[CLIENT] : Getting STREAM Socket to talk to SERVER\n");
+    display_win(msg_win, buf, 1, CLEAR_WINDOW);
+    sleep(1);
+
+    fflush(stdout);
+    if ((my_server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        sprintf(buf, "[CLIENT] : Getting Client Socket - FAILED\n");
+        display_win(msg_win, buf, 1, CLEAR_WINDOW);
+
+        sleep(1);
+
+        destroy_win(chat_win);
+        destroy_win(msg_win);
+        endwin();
+
+        return 3;
+    }
+
+    /*
+     * attempt a connection to server
+     */
+    sprintf(buf, "[CLIENT] : Connecting to SERVER\n");
+    display_win(msg_win, buf, 1, CLEAR_WINDOW);
+    sleep(1);
+
+    fflush(stdout);
+    if (connect(my_server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        sprintf(buf, "[CLIENT] : Connect to Server - FAILED\n");
+        display_win(msg_win, buf, 1, CLEAR_WINDOW);
+        close(my_server_socket);
+
+        sleep(1);
+
+        destroy_win(chat_win);
+        destroy_win(msg_win);
+        endwin();
+
+        return 4;
+    }
 
 }
