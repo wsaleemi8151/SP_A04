@@ -56,46 +56,16 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    return InitChatClient(server_addr, host);
+    InitChatClient(server_addr, host);
+    
+    return 1;
 }
 
 int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
 {
-    int chat_startx, chat_starty, chat_width, chat_height;
-    int msg_startx, msg_starty, msg_width, msg_height;
     char buf[INPUT_MESG_LENGTH];
-
-    initscr(); /* Start curses mode            */
-    cbreak();
-    noecho();
-    refresh();
-
-    chat_height = 5;
-    chat_width = COLS - 2;
-    chat_startx = 1;
-    chat_starty = LINES - chat_height;
-
-    msg_height = LINES - chat_height - 1;
-    msg_width = COLS;
-    msg_startx = 0;
-    msg_starty = 0;
-
-    initscr();
-    refresh();
-    start_color();
-    init_pair(1, COLOR_BLACK, COLOR_GREEN);
-    init_pair(2, COLOR_BLACK, COLOR_CYAN);
-
-    /* create the input window */
-    msg_win = create_newwin(msg_height, msg_width, msg_starty, msg_startx);
-    scrollok(msg_win, TRUE);
-    wbkgd(msg_win, COLOR_PAIR(1));
-
-    /* create the output window */
-    chat_win = create_newwin(chat_height, chat_width, chat_starty, chat_startx);
-    scrollok(chat_win, TRUE);
-    wbkgd(chat_win, COLOR_PAIR(2));
-
+    
+    InitializeChatWindows(buf);
     // ---------------------------- Socket Implementation for Client --------------------------------
 
     /*
@@ -203,4 +173,42 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
     endwin();
 
     return 1;
+}
+
+void InitializeChatWindows(char * buf)
+{
+    int chat_startx, chat_starty, chat_width, chat_height;
+    int msg_startx, msg_starty, msg_width, msg_height;
+
+    initscr(); /* Start curses mode            */
+    cbreak();
+    noecho();
+    refresh();
+
+    chat_height = 5;
+    chat_width = COLS - 2;
+    chat_startx = 1;
+    chat_starty = LINES - chat_height;
+
+    msg_height = LINES - chat_height - 1;
+    msg_width = COLS;
+    msg_startx = 0;
+    msg_starty = 0;
+
+    initscr();
+    refresh();
+    start_color();
+    init_pair(1, COLOR_BLACK, COLOR_GREEN);
+    init_pair(2, COLOR_BLACK, COLOR_CYAN);
+
+    /* create the input window */
+    msg_win = create_newwin(msg_height, msg_width, msg_starty, msg_startx);
+    scrollok(msg_win, TRUE);
+    wbkgd(msg_win, COLOR_PAIR(1));
+
+    /* create the output window */
+    chat_win = create_newwin(chat_height, chat_width, chat_starty, chat_startx);
+    scrollok(chat_win, TRUE);
+    wbkgd(chat_win, COLOR_PAIR(2));
+
 }
