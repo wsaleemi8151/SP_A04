@@ -26,6 +26,13 @@
 #include "../inc/ncurser_helper.h"
 #include "../../Common/inc/common.h"
 
+// Global variable for communication
+static int my_server_socket;
+static int display_window_row_count = 0 ;
+WINDOW *chat_win, *msg_win;
+pthread_t tid[2]; // for holding message and chat windows logic threads
+static int clientDone = 0;
+
 int main(int argc, char *argv[])
 {
     struct sockaddr_in server_addr;
@@ -54,12 +61,8 @@ int main(int argc, char *argv[])
 
 int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
 {
-    pthread_t tid[2]; // for holding message and chat windows logic threads
-    int my_server_socket, len, done;
-
-    WINDOW *chat_win, *msg_win;
     int chat_startx, chat_starty, chat_width, chat_height;
-    int msg_startx, msg_starty, msg_width, msg_height, i;
+    int msg_startx, msg_starty, msg_width, msg_height;
     char buf[INPUT_MESG_LENGTH];
 
     initscr(); /* Start curses mode            */
@@ -148,11 +151,11 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
         return 4;
     }
 
-    done = 1;
+    clientDone = 1;
     blankWin(msg_win);
 
-    i = 1;
-    while (done)
+    display_window_row_count = 1;
+    while (clientDone)
     {
         /* clear out the contents of buffer (if any) */
         memset(buf, 0, INPUT_MESG_LENGTH);
@@ -173,15 +176,15 @@ int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
         {
             // send the command to the SERVER
             write(my_server_socket, buf, strlen(buf));
-            done = 0;
+            clientDone = 0;
         }
         else
         {
             write(my_server_socket, buf, strlen(buf));
-            len = read(my_server_socket, buf, sizeof(buf));
+            read(my_server_socket, buf, sizeof(buf));
 
-            display_win(msg_win, buf, i, NOT_CLEAR_WINDOW);
-            i++;
+            display_win(msg_win, buf, display_window_row_count, NOT_CLEAR_WINDOW);
+            display_window_row_count++;
         }
     }
 
