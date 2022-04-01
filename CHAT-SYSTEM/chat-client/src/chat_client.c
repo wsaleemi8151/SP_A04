@@ -43,19 +43,35 @@ int main(int argc, char *argv[])
     struct sockaddr_in server_addr;
     struct hostent *host;
 
+    char userId[10];
+    char serverName[30];
+
+    char userPrefix[] = "-user";
+    char serverNamePrefix[] = "-server";
+
     /*
      * check for sanity
      */
-    if (argc != 2)
+    if (argc != 3 || (argc == 3 && checkPrefix(userPrefix, argv[1]) != 0 && checkPrefix(serverNamePrefix, argv[2]) != 0))
     {
-        printf("USAGE : tcpipClient <server_name>\n");
+        printf("USAGE : chat-client -user<User> -server<Server Name/IP> \n");
         return 1;
     }
+
+    // extracting command line arguments
+    size_t userPrefixLen = strlen(userPrefix);
+    size_t firstArgLen = strlen(argv[1]);
+
+    size_t serverNamePrefixLen = strlen(serverNamePrefix);
+    size_t secondArgLen = strlen(argv[2]);
+
+    strncpy(userId, &argv[1][userPrefixLen], firstArgLen - userPrefixLen);
+    strncpy(serverName, &argv[2][serverNamePrefixLen], secondArgLen - serverNamePrefixLen);
 
     /*
      * determine host info for server name supplied
      */
-    if ((host = gethostbyname(argv[1])) == NULL)
+    if ((host = gethostbyname(serverName)) == NULL)
     {
         printf("[CLIENT] : Host Info Search - FAILED\n");
         return 2;
@@ -113,6 +129,13 @@ int main(int argc, char *argv[])
     endwin();
 
     return 1;
+}
+
+// Retrieved from: https://stackoverflow.com/questions/4770985/how-to-check-if-a-string-starts-with-another-string-in-c
+// How to check if a string starts with another string in C?
+int checkPrefix(char *pre, char *str)
+{
+    return strncmp(pre, str, strlen(pre));
 }
 
 int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)

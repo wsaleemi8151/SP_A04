@@ -5,8 +5,8 @@
 #                  Chat Client
 # =======================================================
 # FINAL BINARY Target
-./bin/chatClient : ./obj/chat_client.o ./obj/ncurser_helper.o ../Common/obj/common.o 
-	cc ./obj/chat_client.o ./obj/ncurser_helper.o ../Common/obj/common.o -lpthread -lncurses -o ./bin/chatClient
+./bin/chat-client : ./obj/chat_client.o ./obj/ncurser_helper.o ../Common/obj/common.o 
+	cc ./obj/chat_client.o ./obj/ncurser_helper.o ../Common/obj/common.o -lpthread -lncurses -o ./bin/chat-client
 #
 # =======================================================
 #                     Dependencies
@@ -24,10 +24,10 @@
 # =======================================================
 # Other targets
 # ======================================================= 
-all: ./bin/chatClient
+all: ./bin/chat-client
 
 clean: 
-	rm -f ./bin/chatClient*
+	rm -f ./bin/chat-client*
 	rm -f ./obj/chat_client.*
 	rm -f ../Common/obj/common.*
 
