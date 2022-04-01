@@ -5,6 +5,7 @@
         "common.h": "c",
         "pthread.h": "c",
         "chat_client.h": "c",
-        "chat_server.h": "c"
+        "chat_server.h": "c",
+        "stdio.h": "c"
     }
 }

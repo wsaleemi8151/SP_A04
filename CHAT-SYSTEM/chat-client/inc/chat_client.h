@@ -6,3 +6,6 @@
 int InitChatClient(struct sockaddr_in server_addr, struct hostent *host);
 void InitializeChatWindows(char * buf);
 int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host, char * buf);
+
+void *inputWindowThread(void *);
+void *outputWindowThread(void *);

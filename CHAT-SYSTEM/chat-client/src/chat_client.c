@@ -11,7 +11,6 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <string.h>
@@ -19,6 +18,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <pthread.h>
 
 #include <ncurses.h>
 
@@ -28,10 +30,13 @@
 
 // Global variable for communication
 static int my_server_socket;
-static int display_window_row_count = 0 ;
-WINDOW *chat_win, *msg_win;
+static int display_window_row_count = 0;
+WINDOW *chat_win, *output_win;
 pthread_t tid[2]; // for holding message and chat windows logic threads
-static int clientDone = 0;
+static int clientActive = 0;
+
+static pthread_t inputWindowThreadId;
+static pthread_t outputWindowThreadId;
 
 int main(int argc, char *argv[])
 {
@@ -57,74 +62,71 @@ int main(int argc, char *argv[])
     }
 
     InitChatClient(server_addr, host);
-    
-    return 1;
-}
 
-int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
-{
-    char buf[INPUT_MESG_LENGTH];
-    
-    InitializeChatWindows(buf);
+    clientActive = 1;
+    blankWin(chat_win);
 
-    InitializeChatSocket(server_addr, host, buf);
-
-
-    clientDone = 1;
-    blankWin(msg_win);
-
-    display_window_row_count = 1;
-    while (clientDone)
+    int dummy;
+    // Thread to dispatch received messages to all clients
+    if (pthread_create(&inputWindowThreadId, NULL, inputWindowThread, (void *)&dummy))
     {
-        /* clear out the contents of buffer (if any) */
-        memset(buf, 0, INPUT_MESG_LENGTH);
-
-        /*
-         * now that we have a connection, get a commandline from
-         * the user, and fire it off to the server
-         */
+        printf("[SERVER] : inputWindowThread() FAILED\n");
         fflush(stdout);
-
-        input_win(chat_win, buf);
-
-        if (buf[strlen(buf) - 1] == '\n')
-            buf[strlen(buf) - 1] = '\0';
-
-        /* check if the user wants to quit */
-        if (strcmp(buf, "quit") == 0)
-        {
-            // send the command to the SERVER
-            write(my_server_socket, buf, strlen(buf));
-            clientDone = 0;
-        }
-        else
-        {
-            write(my_server_socket, buf, strlen(buf));
-            read(my_server_socket, buf, sizeof(buf));
-
-            display_win(msg_win, buf, display_window_row_count, NOT_CLEAR_WINDOW);
-            display_window_row_count++;
-        }
+        return 5;
     }
+
+    // Thread to dispatch received messages to all clients
+    if (pthread_create(&outputWindowThreadId, NULL, outputWindowThread, (void *)&dummy))
+    {
+        printf("[SERVER] : outputWindowThread() FAILED\n");
+        fflush(stdout);
+        return 5;
+    }
+
+    int joinStatus = pthread_join(inputWindowThreadId, (void *)(&dummy));
+    if (joinStatus == 0)
+    {
+        printf("\n[SERVER] : Input Message thread completed");
+    }
+
+    joinStatus = pthread_join(outputWindowThreadId, (void *)(&dummy));
+    if (joinStatus == 0)
+    {
+        printf("\n[SERVER] : Output Message thread completed");
+    }
+
+    char buf[INPUT_MESG_LENGTH];
+    sprintf(buf, "[CLIENT] : I'm outta here !\n");
+    display_win(output_win, buf, 1, CLEAR_WINDOW);
+
+    // ----------------------------------------------------------------------------------------------
 
     /*
      * cleanup
      */
     close(my_server_socket);
 
-    sprintf(buf, "[CLIENT] : I'm outta here !\n");
-    display_win(msg_win, buf, 1, CLEAR_WINDOW);
-
     // ----------------------------------------------------------------------------------------------
 
     destroy_win(chat_win);
-    destroy_win(msg_win);
+    destroy_win(output_win);
     endwin();
 
     return 1;
 }
 
-void InitializeChatWindows(char * buf)
+int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
+{
+    char buf[INPUT_MESG_LENGTH];
+
+    InitializeChatWindows(buf);
+
+    InitializeChatSocket(server_addr, host, buf);
+
+    return 1;
+}
+
+void InitializeChatWindows(char *buf)
 {
     int chat_startx, chat_starty, chat_width, chat_height;
     int msg_startx, msg_starty, msg_width, msg_height;
@@ -151,18 +153,17 @@ void InitializeChatWindows(char * buf)
     init_pair(2, COLOR_BLACK, COLOR_CYAN);
 
     /* create the input window */
-    msg_win = create_newwin(msg_height, msg_width, msg_starty, msg_startx);
-    scrollok(msg_win, TRUE);
-    wbkgd(msg_win, COLOR_PAIR(1));
+    output_win = create_newwin(msg_height, msg_width, msg_starty, msg_startx);
+    scrollok(output_win, TRUE);
+    wbkgd(output_win, COLOR_PAIR(1));
 
     /* create the output window */
     chat_win = create_newwin(chat_height, chat_width, chat_starty, chat_startx);
     scrollok(chat_win, TRUE);
     wbkgd(chat_win, COLOR_PAIR(2));
-
 }
 
-int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host, char * buf)
+int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host, char *buf)
 {
     // ---------------------------- Socket Implementation for Client --------------------------------
 
@@ -178,19 +179,19 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host, c
      * get a socket for communications
      */
     sprintf(buf, "[CLIENT] : Getting STREAM Socket to talk to SERVER\n");
-    display_win(msg_win, buf, 1, CLEAR_WINDOW);
+    display_win(output_win, buf, 1, CLEAR_WINDOW);
     sleep(1);
 
     fflush(stdout);
     if ((my_server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         sprintf(buf, "[CLIENT] : Getting Client Socket - FAILED\n");
-        display_win(msg_win, buf, 1, CLEAR_WINDOW);
+        display_win(output_win, buf, 1, CLEAR_WINDOW);
 
         sleep(1);
 
         destroy_win(chat_win);
-        destroy_win(msg_win);
+        destroy_win(output_win);
         endwin();
 
         return 3;
@@ -200,23 +201,88 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host, c
      * attempt a connection to server
      */
     sprintf(buf, "[CLIENT] : Connecting to SERVER\n");
-    display_win(msg_win, buf, 1, CLEAR_WINDOW);
+    display_win(output_win, buf, 1, CLEAR_WINDOW);
     sleep(1);
 
     fflush(stdout);
     if (connect(my_server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         sprintf(buf, "[CLIENT] : Connect to Server - FAILED\n");
-        display_win(msg_win, buf, 1, CLEAR_WINDOW);
+        display_win(output_win, buf, 1, CLEAR_WINDOW);
         close(my_server_socket);
 
         sleep(1);
 
         destroy_win(chat_win);
-        destroy_win(msg_win);
+        destroy_win(output_win);
         endwin();
 
         return 4;
     }
+}
 
+//
+// Input Winow handler - this function is called (spawned as a thread of execution)
+//
+
+void *inputWindowThread(void *dummy)
+{
+    char buf[INPUT_MESG_LENGTH];
+
+    display_window_row_count = 1;
+    while (clientActive)
+    {
+        /* clear out the contents of buffer (if any) */
+        memset(buf, 0, INPUT_MESG_LENGTH);
+
+        /*
+         * now that we have a connection, get a commandline from
+         * the user, and fire it off to the server
+         */
+        fflush(stdout);
+
+        input_win(chat_win, buf);
+
+        if (buf[strlen(buf) - 1] == '\n')
+            buf[strlen(buf) - 1] = '\0';
+
+        /* check if the user wants to quit */
+        if (strcmp(buf, "quit") == 0)
+        {
+            // send the command to the SERVER
+            write(my_server_socket, buf, strlen(buf));
+            clientActive = 0;
+        }
+        else
+        {
+            write(my_server_socket, buf, strlen(buf));
+        }
+    }
+}
+
+//
+// Output Winow handler - this function is called (spawned as a thread of execution)
+//
+
+void *outputWindowThread(void *dummy)
+{
+    char buf[INPUT_MESG_LENGTH];
+
+    display_window_row_count = 1;
+    while (clientActive)
+    {
+        /* clear out the contents of buffer (if any) */
+        memset(buf, 0, INPUT_MESG_LENGTH);
+
+        /*
+         * now that we have a connection, get a commandline from
+         * the user, and fire it off to the server
+         */
+        fflush(stdout);
+
+        read(my_server_socket, buf, sizeof(buf));
+
+        display_win(output_win, buf, display_window_row_count, NOT_CLEAR_WINDOW);
+        display_window_row_count++;
+    }
 }

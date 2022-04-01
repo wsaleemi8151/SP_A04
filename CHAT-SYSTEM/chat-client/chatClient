@@ -6,7 +6,7 @@
 # =======================================================
 # FINAL BINARY Target
 ./bin/chatClient : ./obj/chat_client.o ./obj/ncurser_helper.o ../Common/obj/common.o 
-	cc ./obj/chat_client.o ./obj/ncurser_helper.o ../Common/obj/common.o -lncurses -o ./bin/chatClient
+	cc ./obj/chat_client.o ./obj/ncurser_helper.o ../Common/obj/common.o -lpthread -lncurses -o ./bin/chatClient
 #
 # =======================================================
 #                     Dependencies

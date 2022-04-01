@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -273,7 +272,7 @@ void *messageThread(void *dummy)
             }
             MessageQueueCount--;
         }
-        sleep(1);
+        sleep(0.5f);
     }
 }
 
