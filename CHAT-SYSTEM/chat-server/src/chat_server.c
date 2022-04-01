@@ -27,10 +27,13 @@
 #define PORT 5000
 
 // global variable to keep count of the number of clients ...
-static int numClients = 0;
 static int MessageQueueCount = 0;
 
+static pthread_t messageThreadId;
+static int exitMessageThread = 0;
 ChatMessage MessageQueue[MESSAGE_QUEUE_LENGTH];
+ConnectedClient ConnectedClientsList[NO_OF_CLIENTS];
+static int ConnectedClientsCount = 0;
 
 int main(void)
 {
@@ -44,7 +47,6 @@ int InitChatServer(void)
     int client_len;
     struct sockaddr_in client_addr, server_addr;
     int len, i;
-    pthread_t tid[NO_OF_CLIENTS]; // array capable of holding up to NO_OF_CLIENTS "connection" threads
     int whichClient;
 
     /*
@@ -85,6 +87,16 @@ int InitChatServer(void)
     }
     printf("[SERVER] : listen() successful\n");
 
+    printf("\n --------------- here --------------\n");
+
+    // Thread to dispatch received messages to all clients
+    if (pthread_create(&messageThreadId, NULL, messageThread, (void *)&client_socket))
+    {
+        printf("[SERVER] : messageThread() FAILED\n");
+        fflush(stdout);
+        return 5;
+    }
+
     /*
      * for this server, run an endless loop that will
      * accept incoming requests from a remote client.
@@ -92,7 +104,7 @@ int InitChatServer(void)
      * request, and the parent will continue to listen for the
      * next request - up to 3 clients
      */
-    while (numClients < NO_OF_CLIENTS)
+    while (ConnectedClientsCount < NO_OF_CLIENTS)
     {
         printf("[SERVER] : Ready to accept()\n");
         fflush(stdout);
@@ -108,8 +120,7 @@ int InitChatServer(void)
             return 4;
         }
 
-        numClients++;
-        printf("[SERVER] : received a packet from CLIENT-%02d\n", numClients);
+        printf("[SERVER] : received a packet from CLIENT-%02d\n", ConnectedClientsCount);
         fflush(stdout);
 
         /*
@@ -120,7 +131,8 @@ int InitChatServer(void)
          * care of executing the task.  We'll be looking at THREADING in a
          * couple modules from now ...
          */
-        if (pthread_create(&(tid[(numClients - 1)]), NULL, socketThread, (void *)&client_socket))
+
+        if (pthread_create(&(ConnectedClientsList[ConnectedClientsCount].tid), NULL, socketThread, (void *)&client_socket))
         {
             printf("[SERVER] : pthread_create() FAILED\n");
             fflush(stdout);
@@ -128,23 +140,39 @@ int InitChatServer(void)
         }
         else
         {
-            
-        }
+            ConnectedClientsList[ConnectedClientsCount].client_socket = client_socket;
+            ConnectedClientsList[ConnectedClientsCount].client_addr = &client_addr;
+            ConnectedClientsCount++;
 
-        printf("[SERVER] : pthread_create() successful for CLIENT-%02d\n", numClients);
+            // strcpy(ConnectedClientsList[ConnectedClientsCount].userId, "");
+        }
+        printf("\n --------------- here --------------\n");
+
+        printf("[SERVER] : pthread_create() successful for CLIENT-%02d\n", ConnectedClientsCount);
         fflush(stdout);
     }
+
+    printf("[SERVER] : messageThread() successful");
+    fflush(stdout);
 
     // once we reach No of clients - let's go into a busy "join" loop waiting for
     // all of the clients to finish and join back up to this main thread
     printf("\n[SERVER] : Now we wait for the threads to complete ... \n");
     for (i = 0; i < NO_OF_CLIENTS; i++)
     {
-        int joinStatus = pthread_join(tid[i], (void *)(&whichClient));
+        int joinStatus = pthread_join(ConnectedClientsList[ConnectedClientsCount].tid, (void *)(&whichClient));
         if (joinStatus == 0)
         {
             printf("\n[SERVER] : received QUIT command from CLIENT-%02d (joinStatus=%d)\n", whichClient, joinStatus);
         }
+    }
+
+    // exiting message thread
+    exitMessageThread = 1;
+    int joinStatus = pthread_join(messageThreadId, (void *)(&whichClient));
+    if (joinStatus == 0)
+    {
+        printf("\n[SERVER] : Message thread completed");
     }
 
     printf("\n[SERVER] : All clients have returned - exiting ...\n");
@@ -172,8 +200,8 @@ void *socketThread(void *clientSocket)
     memset(buffer, 0, INPUT_MESG_LENGTH);
 
     // increment the numClients
-    int iAmClient = numClients; // assumes that another connection from another client
-                                // hasn't been created in the meantime
+    int iAmClient = ConnectedClientsCount; // assumes that another connection from another client
+                                           // hasn't been created in the meantime
 
     numBytesRead = read(clSocket, buffer, INPUT_MESG_LENGTH);
 
@@ -183,11 +211,15 @@ void *socketThread(void *clientSocket)
         sprintf(message, "[SERVER (Thread-%02d)] : Received %d bytes - command - %s\n", iAmClient, numBytesRead, buffer);
 
         // ----
-        write(clSocket, message, strlen(message));
+        char emptyMesg[1] = "";
+        write(clSocket, emptyMesg, strlen(emptyMesg));
+        // write(clSocket, message, strlen(message));
+
         if (MessageQueueCount < MESSAGE_QUEUE_LENGTH)
         {
             // Update message queue when a message received
-            MessageQueue[MessageQueueCount].client_addr = clSocket;
+            printf("Client Socket: %d\n", clSocket);
+            MessageQueue[MessageQueueCount].client_socket = clSocket;
             strcpy(MessageQueue[MessageQueueCount].message, message);
             MessageQueueCount++;
         }
@@ -201,8 +233,7 @@ void *socketThread(void *clientSocket)
     }
     close(clSocket);
 
-    // decrement the number of clients
-    numClients--;
+    UpdateConnectedClientListOnDelete(clSocket);
 
     // the return status will be the client # of this thread
     // timeToExit = iAmClient;
@@ -210,4 +241,59 @@ void *socketThread(void *clientSocket)
     printf("[SERVER (Thread-%02d)] : closing socket\n", iAmClient);
 
     return 0;
+}
+
+//
+// Message List handler - this function is called (spawned as a thread of execution)
+//
+
+void *messageThread(void *dummy)
+{
+    while (exitMessageThread == 0)
+    {
+        // printf("\n--------------------Message thread executed Message count: %d\n\n", MessageQueueCount);
+        if (MessageQueueCount > 0)
+        {
+            for (size_t posMesg = 0; posMesg < MessageQueueCount; posMesg++)
+            {
+                for (size_t posClient = 0; posClient < ConnectedClientsCount; posClient++)
+                {
+                    printf("Client Socket: %d, Message: %s \n", ConnectedClientsList[posClient].client_socket, MessageQueue[posMesg].message);
+                    write(ConnectedClientsList[posClient].client_socket, MessageQueue[posMesg].message, strlen(MessageQueue[posMesg].message));
+                }
+
+                // check if message queue needs to be updated
+                if (posMesg < MessageQueueCount - 1)
+                {
+                    for (size_t k = posMesg; k < ConnectedClientsCount - 1; k++)
+                    {
+                        MessageQueue[k] = MessageQueue[k + 1];
+                    }
+                }
+            }
+            MessageQueueCount--;
+        }
+        sleep(1);
+    }
+}
+
+void UpdateConnectedClientListOnDelete(int clSocket)
+{
+    for (size_t pos = 0; pos < ConnectedClientsCount; pos++)
+    {
+        if (ConnectedClientsList[pos].client_socket == clSocket)
+        {
+            // check if connected client list needs to be updated
+            if (pos < ConnectedClientsCount - 1)
+            {
+                for (size_t k = pos; k < ConnectedClientsCount - 1; k++)
+                {
+                    ConnectedClientsList[k] = ConnectedClientsList[k + 1];
+                }
+            }
+        }
+    }
+
+    // decrement the number of clients
+    ConnectedClientsCount--;
 }
