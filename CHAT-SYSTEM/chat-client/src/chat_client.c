@@ -77,7 +77,9 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    InitChatClient(server_addr, host);
+    InitializeChatWindows();
+
+    InitializeChatSocket(server_addr, host);
 
     clientActive = 1;
     blankWin(chat_win);
@@ -138,18 +140,7 @@ int checkPrefix(char *pre, char *str)
     return strncmp(pre, str, strlen(pre));
 }
 
-int InitChatClient(struct sockaddr_in server_addr, struct hostent *host)
-{
-    char buf[INPUT_MESG_LENGTH];
-
-    InitializeChatWindows(buf);
-
-    InitializeChatSocket(server_addr, host, buf);
-
-    return 1;
-}
-
-void InitializeChatWindows(char *buf)
+void InitializeChatWindows()
 {
     int chat_startx, chat_starty, chat_width, chat_height;
     int msg_startx, msg_starty, msg_width, msg_height;
@@ -186,9 +177,10 @@ void InitializeChatWindows(char *buf)
     wbkgd(chat_win, COLOR_PAIR(2));
 }
 
-int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host, char *buf)
+int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
 {
     // ---------------------------- Socket Implementation for Client --------------------------------
+    char buf[INPUT_MESG_LENGTH];
 
     /*
      * initialize struct to get a socket to host
