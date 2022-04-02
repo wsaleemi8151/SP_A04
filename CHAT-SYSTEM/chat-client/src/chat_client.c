@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <time.h>
 
 #include <ncurses.h>
 
@@ -283,16 +284,16 @@ void *inputWindowThread(void *dummy)
 
 void *outputWindowThread(void *dummy)
 {
-    char buf[INPUT_MESG_LENGTH];
+    char buf[TRANSMISSION_MESG_LENGTH];
 
     /* clear out the contents of buffer (if any) */
-    memset(buf, 0, INPUT_MESG_LENGTH);
+    memset(buf, 0, TRANSMISSION_MESG_LENGTH);
 
     display_window_row_count = 1;
     while (clientActive)
     {
         /* clear out the contents of buffer (if any) */
-        memset(buf, 0, INPUT_MESG_LENGTH);
+        memset(buf, 0, TRANSMISSION_MESG_LENGTH);
 
         /*
          * now that we have a connection, get a commandline from
@@ -302,7 +303,18 @@ void *outputWindowThread(void *dummy)
 
         read(my_server_socket, buf, sizeof(buf));
 
-        display_win(output_win, buf, display_window_row_count, NOT_CLEAR_WINDOW);
+        /* Obtain current time. */
+        time_t current_time;
+        current_time = time(NULL);
+        char timestamp[9];
+
+        struct tm *ptm = localtime(&current_time);
+        strftime(timestamp, 9, "%2H:%2M:%2S", ptm);
+
+        char outputMesg[INPUT_MESG_LENGTH];
+        sprintf(outputMesg, "%-67s %s\n", buf, timestamp);
+
+        display_win(output_win, outputMesg, display_window_row_count, NOT_CLEAR_WINDOW);
         display_window_row_count++;
     }
 }

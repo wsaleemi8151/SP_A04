@@ -4,7 +4,7 @@
 int checkPrefix(char *pre, char *str);
 
 #define INPUT_MESG_LENGTH 80
-#define TRANSMISSION_MESG_LENGTH 40
+#define TRANSMISSION_MESG_LENGTH 67
 #define USER_ID_LENGTH 10
 
 static char userPrefix[] = "-user";

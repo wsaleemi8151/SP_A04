@@ -280,11 +280,11 @@ void *messageThread(void *dummy)
                     char buffer[INPUT_MESG_LENGTH];
                     if (ConnectedClientsList[posClient].client_socket == MessageQueue[posMesg].client_socket)
                     {
-                        sprintf(buffer, "%-15d [%-5s] >> %s\n", MessageQueue[posMesg].client_socket, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
+                        sprintf(buffer, "%-15d [%-5s] >> %s", MessageQueue[posMesg].client_socket, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
                     }
                     else
                     {
-                        sprintf(buffer, "%-15d [%-5s] << %s\n", MessageQueue[posMesg].client_socket, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
+                        sprintf(buffer, "%-15d [%-5s] << %s", MessageQueue[posMesg].client_socket, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
                     }
 
                     write(ConnectedClientsList[posClient].client_socket, buffer, strlen(buffer));
