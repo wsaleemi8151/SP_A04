@@ -131,7 +131,17 @@ int InitChatServer(void)
         {
             size_t firstMesgLen = strlen(buffer);
             size_t userPrefixLen = strlen(userPrefix);
-            strncpy(userId, &buffer[userPrefixLen], firstMesgLen - userPrefixLen);
+
+            size_t substringLen = 0;
+            if (firstMesgLen > userPrefixLen + 5)
+            {
+                substringLen = userPrefixLen + 5;
+            }
+            else
+            {
+                substringLen = firstMesgLen;
+            }
+            strncpy(userId, &buffer[userPrefixLen], substringLen);
         }
         else
         {
@@ -227,9 +237,9 @@ void *socketThread(void *_clientSocketSt)
     memset(message, 0, INPUT_MESG_LENGTH);
     while (strcmp(buffer, "quit") != 0)
     {
-        /* we're actually not going to execute the command - but we could if we wanted */
-        sprintf(message, "[SERVER (Thread-%02d)] : %s Received %d bytes - command - %s\n", iAmClient, clientSocketSt.userId, numBytesRead, buffer);
+        sprintf(message, "%s", buffer);
 
+        // storing received message in the message queue to be broadcast
         if (MessageQueueCount < MESSAGE_QUEUE_LENGTH)
         {
             // Update message queue when a message received
@@ -238,10 +248,7 @@ void *socketThread(void *_clientSocketSt)
             strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
             MessageQueueCount++;
         }
-        else
-        {
-            printf("\n[CHAT SERVER] : Message Queue already full ...\n");
-        }
+
         // clear out and get the next command and process
         memset(buffer, 0, INPUT_MESG_LENGTH);
         numBytesRead = read(clSocket, buffer, INPUT_MESG_LENGTH);
@@ -251,11 +258,9 @@ void *socketThread(void *_clientSocketSt)
     UpdateConnectedClientListOnDelete(clSocket);
 
     // the return status will be the client # of this thread
-    // timeToExit = iAmClient;
-    // pthread_exit((void *)(&timeToExit));
-    printf("[CHAT SERVER (Thread-%02d)] : closing socket\n", iAmClient);
-
-    return 0;
+    printf("[CHAT SERVER] (Thread-%02d) : closing socket\n", iAmClient);
+    timeToExit = iAmClient;
+    pthread_exit((void *)(&timeToExit));
 }
 
 //
@@ -272,7 +277,17 @@ void *messageThread(void *dummy)
             {
                 for (size_t posClient = 0; posClient < ConnectedClientsCount; posClient++)
                 {
-                    write(ConnectedClientsList[posClient].client_socket, MessageQueue[posMesg].message, strlen(MessageQueue[posMesg].message));
+                    char buffer[INPUT_MESG_LENGTH];
+                    if (ConnectedClientsList[posClient].client_socket == MessageQueue[posMesg].client_socket)
+                    {
+                        sprintf(buffer, "%-15d [%-5s] >> %s\n", MessageQueue[posMesg].client_socket, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
+                    }
+                    else
+                    {
+                        sprintf(buffer, "%-15d [%-5s] << %s\n", MessageQueue[posMesg].client_socket, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
+                    }
+
+                    write(ConnectedClientsList[posClient].client_socket, buffer, strlen(buffer));
                 }
 
                 // check if message queue needs to be updated

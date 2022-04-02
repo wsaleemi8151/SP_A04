@@ -194,7 +194,7 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
     fflush(stdout);
     if ((my_server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-        sprintf(buf, "[CLIENT] : Getting Client Socket - FAILED\n");
+        sprintf(buf, "[CHAT CLIENT] : Getting Client Socket - FAILED\n");
         display_win(output_win, buf, 1, CLEAR_WINDOW);
 
         destroy_win(chat_win);
@@ -207,14 +207,14 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
     /*
      * attempt a connection to server
      */
-    sprintf(buf, "[CLIENT] : Connecting to SERVER\n");
+    sprintf(buf, "[CHAT CLIENT] : Connecting to SERVER\n");
     display_win(output_win, buf, 1, CLEAR_WINDOW);
     sleep(0.5);
 
     fflush(stdout);
     if (connect(my_server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        sprintf(buf, "[CLIENT] : Connect to Server - FAILED\n");
+        sprintf(buf, "[CHAT CLIENT] : Connect to Server - FAILED\n");
         display_win(output_win, buf, 1, CLEAR_WINDOW);
         close(my_server_socket);
 
@@ -226,6 +226,8 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
     }
     else
     {
+        sprintf(buf, "[CHAT CLIENT] : Client connected to SERVER\n");
+        display_win(output_win, buf, 1, CLEAR_WINDOW);
         // send user id as first message
         /* clear out the contents of buffer (if any) */
         char uId[USER_ID_LENGTH];
@@ -248,6 +250,7 @@ void *inputWindowThread(void *dummy)
     {
         /* clear out the contents of buffer (if any) */
         memset(buf, 0, INPUT_MESG_LENGTH);
+        blankWin(chat_win);
 
         /*
          * now that we have a connection, get a commandline from
@@ -281,6 +284,9 @@ void *inputWindowThread(void *dummy)
 void *outputWindowThread(void *dummy)
 {
     char buf[INPUT_MESG_LENGTH];
+
+    /* clear out the contents of buffer (if any) */
+    memset(buf, 0, INPUT_MESG_LENGTH);
 
     display_window_row_count = 1;
     while (clientActive)
