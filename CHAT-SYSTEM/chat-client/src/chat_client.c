@@ -37,16 +37,15 @@ static int clientActive = 0;
 
 static pthread_t inputWindowThreadId;
 static pthread_t outputWindowThreadId;
+char userId[10];
 
 int main(int argc, char *argv[])
 {
     struct sockaddr_in server_addr;
     struct hostent *host;
 
-    char userId[10];
     char serverName[30];
 
-    char userPrefix[] = "-user";
     char serverNamePrefix[] = "-server";
 
     /*
@@ -131,13 +130,6 @@ int main(int argc, char *argv[])
     endwin();
 
     return 1;
-}
-
-// Retrieved from: https://stackoverflow.com/questions/4770985/how-to-check-if-a-string-starts-with-another-string-in-c
-// How to check if a string starts with another string in C?
-int checkPrefix(char *pre, char *str)
-{
-    return strncmp(pre, str, strlen(pre));
 }
 
 void InitializeChatWindows()
@@ -233,6 +225,15 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
         endwin();
 
         return 4;
+    }
+    else
+    {
+        // send user id as first message
+        /* clear out the contents of buffer (if any) */
+        char uId[10];
+        memset(uId, 0, 10);
+        sprintf(uId, "-user%s", userId);
+        write(my_server_socket, uId, strlen(uId));
     }
 }
 

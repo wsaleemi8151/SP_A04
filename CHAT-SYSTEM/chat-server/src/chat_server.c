@@ -86,8 +86,6 @@ int InitChatServer(void)
     }
     printf("[SERVER] : listen() successful\n");
 
-    printf("\n --------------- here --------------\n");
-
     // Thread to dispatch received messages to all clients
     if (pthread_create(&messageThreadId, NULL, messageThread, (void *)&client_socket))
     {
@@ -122,6 +120,23 @@ int InitChatServer(void)
         printf("[SERVER] : received a packet from CLIENT-%02d\n", ConnectedClientsCount);
         fflush(stdout);
 
+        // reading user id
+        char userId[10];
+
+        char buffer[INPUT_MESG_LENGTH];
+        int numBytesRead = read(client_socket, buffer, INPUT_MESG_LENGTH);
+        if (checkPrefix(userPrefix, buffer) == 0)
+        {
+            size_t firstMesgLen = strlen(buffer);
+            size_t userPrefixLen = strlen(userPrefix);
+            strncpy(userId, &buffer[userPrefixLen], firstMesgLen - userPrefixLen);
+        }
+        else
+        {
+            printf("[SERVER] : Invalid User Id\n");
+            fflush(stdout);
+            return 5;
+        }
         /*
          * rather than fork and spawn the execution of the command within a
          * child task - let's take a look at something else we could do ...
@@ -131,7 +146,13 @@ int InitChatServer(void)
          * couple modules from now ...
          */
 
-        if (pthread_create(&(ConnectedClientsList[ConnectedClientsCount].tid), NULL, socketThread, (void *)&client_socket))
+        ClientSocketStruct clientSocketSt;
+        clientSocketSt.clientSocket = client_socket;
+
+        memset(clientSocketSt.userId, 0, 10);
+        strcpy(clientSocketSt.userId, userId);
+
+        if (pthread_create(&(ConnectedClientsList[ConnectedClientsCount].tid), NULL, socketThread, (void *)&clientSocketSt))
         {
             printf("[SERVER] : pthread_create() FAILED\n");
             fflush(stdout);
@@ -141,11 +162,11 @@ int InitChatServer(void)
         {
             ConnectedClientsList[ConnectedClientsCount].client_socket = client_socket;
             ConnectedClientsList[ConnectedClientsCount].client_addr = &client_addr;
+            strcpy(ConnectedClientsList[ConnectedClientsCount].userId, userId);
             ConnectedClientsCount++;
 
             // strcpy(ConnectedClientsList[ConnectedClientsCount].userId, "");
         }
-        printf("\n --------------- here --------------\n");
 
         printf("[SERVER] : pthread_create() successful for CLIENT-%02d\n", ConnectedClientsCount);
         fflush(stdout);
@@ -183,7 +204,7 @@ int InitChatServer(void)
 // Socket handler - this function is called (spawned as a thread of execution)
 //
 
-void *socketThread(void *clientSocket)
+void *socketThread(void *_clientSocketSt)
 {
     // used for accepting incoming command and also holding the command's response
     char buffer[INPUT_MESG_LENGTH];
@@ -193,7 +214,8 @@ void *socketThread(void *clientSocket)
     int numBytesRead;
 
     // remap the clientSocket value (which is a void*) back into an INT
-    int clSocket = *((int *)clientSocket);
+    ClientSocketStruct clientSocketSt = *((ClientSocketStruct *)_clientSocketSt);
+    int clSocket = clientSocketSt.clientSocket;
 
     /* Clear out the input Buffer */
     memset(buffer, 0, INPUT_MESG_LENGTH);
@@ -206,13 +228,9 @@ void *socketThread(void *clientSocket)
 
     while (strcmp(buffer, "quit") != 0)
     {
+        memset(message, 0, INPUT_MESG_LENGTH);
         /* we're actually not going to execute the command - but we could if we wanted */
-        sprintf(message, "[SERVER (Thread-%02d)] : Received %d bytes - command - %s\n", iAmClient, numBytesRead, buffer);
-
-        // ----
-        char emptyMesg[1] = "";
-        write(clSocket, emptyMesg, strlen(emptyMesg));
-        // write(clSocket, message, strlen(message));
+        sprintf(message, "[SERVER (Thread-%02d)] : %s Received %d bytes - command - %s\n", iAmClient, clientSocketSt.userId, numBytesRead, buffer);
 
         if (MessageQueueCount < MESSAGE_QUEUE_LENGTH)
         {
@@ -220,6 +238,7 @@ void *socketThread(void *clientSocket)
             printf("Client Socket: %d\n", clSocket);
             MessageQueue[MessageQueueCount].client_socket = clSocket;
             strcpy(MessageQueue[MessageQueueCount].message, message);
+            strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
             MessageQueueCount++;
         }
         else

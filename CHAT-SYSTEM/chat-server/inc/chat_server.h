@@ -10,7 +10,7 @@ void *messageThread(void *dummy);
 typedef struct _ConnectedClient
 {
     pthread_t tid;
-    char *userId;
+    char userId[10];
     // struct sockaddr *client_addr;
     int client_socket;
     struct sockaddr_in *client_addr;

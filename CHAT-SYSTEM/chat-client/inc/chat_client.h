@@ -3,7 +3,6 @@
 #define CLEAR_WINDOW 1
 #define NOT_CLEAR_WINDOW 0
 
-int checkPrefix(char *pre, char *str);
 void InitializeChatWindows();
 int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host);
 
