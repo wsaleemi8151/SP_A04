@@ -29,7 +29,7 @@
 static int MessageQueueCount = 0;
 
 static pthread_t messageThreadId;
-static int exitMessageThread = 0;
+static int exitCalled = 0;
 ChatMessage MessageQueue[MESSAGE_QUEUE_LENGTH];
 ConnectedClient ConnectedClientsList[NO_OF_CLIENTS];
 static int ConnectedClientsCount = 0;
@@ -47,6 +47,7 @@ int InitChatServer(void)
     struct sockaddr_in client_addr, server_addr;
     int len, i;
     int whichClient;
+    int onStartup = 1;
 
     /*
      * obtain a socket for the server
@@ -101,90 +102,103 @@ int InitChatServer(void)
      * request, and the parent will continue to listen for the
      * next request - up to 3 clients
      */
-    while (ConnectedClientsCount < NO_OF_CLIENTS)
+    while (exitCalled == 0)
     {
-        printf("[CHAT SERVER] : Ready to accept()\n");
-        fflush(stdout);
-
-        /*
-         * accept a packet from the client
-         */
-        client_len = sizeof(client_addr);
-        if ((client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len)) < 0)
+        sleep(3);
+        if (ConnectedClientsCount >= NO_OF_CLIENTS)
         {
-            printf("[CHAT SERVER] : accept() FAILED\n");
-            fflush(stdout);
-            return 4;
+            exitCalled = 1;
+            printf("[CHAT SERVER] : Max number of clients connected, not accepting new clients\n");
         }
-
-        fflush(stdout);
-
-        // reading user id
-        char userId[USER_ID_LENGTH];
-
-        char buffer[INPUT_MESG_LENGTH];
-
-        // clear out and get the next command and process
-        memset(buffer, 0, INPUT_MESG_LENGTH);
-        int numBytesRead = read(client_socket, buffer, INPUT_MESG_LENGTH);
-        if (checkPrefix(userPrefix, buffer) == 0)
+        else if (ConnectedClientsCount == 0 && onStartup == 0)
         {
-            size_t firstMesgLen = strlen(buffer);
-            size_t userPrefixLen = strlen(userPrefix);
+            exitCalled = 1;
+        }
+        else
+        {
+            printf("[CHAT SERVER] : Ready to accept()\n");
+            fflush(stdout);
 
-            size_t substringLen = 0;
-            if (firstMesgLen > userPrefixLen + 5)
+            /*
+             * accept a packet from the client if not max number of clients reached
+             */
+            client_len = sizeof(client_addr);
+            if ((client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len)) < 0)
             {
-                substringLen = userPrefixLen + 5;
+                printf("[CHAT SERVER] : accept() FAILED\n");
+                fflush(stdout);
+                return 4;
+            }
+
+            // On Startup set to false when atleast one client successfully connected
+            onStartup = 1;
+
+            fflush(stdout);
+
+            // reading user id
+            char userId[USER_ID_LENGTH];
+
+            char buffer[INPUT_MESG_LENGTH];
+
+            // clear out and get the next command and process
+            memset(buffer, 0, INPUT_MESG_LENGTH);
+            int numBytesRead = read(client_socket, buffer, INPUT_MESG_LENGTH);
+            if (checkPrefix(userPrefix, buffer) == 0)
+            {
+                size_t firstMesgLen = strlen(buffer);
+                size_t userPrefixLen = strlen(userPrefix);
+
+                size_t substringLen = 0;
+                if (firstMesgLen > userPrefixLen + 5)
+                {
+                    substringLen = userPrefixLen + 5;
+                }
+                else
+                {
+                    substringLen = firstMesgLen;
+                }
+                strncpy(userId, &buffer[userPrefixLen], substringLen);
             }
             else
             {
-                substringLen = firstMesgLen;
+                printf("[CHAT SERVER] : Invalid User Id\n");
+                fflush(stdout);
+                return 5;
             }
-            strncpy(userId, &buffer[userPrefixLen], substringLen);
-        }
-        else
-        {
-            printf("[CHAT SERVER] : Invalid User Id\n");
+
+            /*
+             * rather than fork and spawn the execution of the command within a
+             * child task - let's take a look at something else we could do ...
+             *
+             * ... we'll create a thread of execution within this task to take
+             * care of executing the task.  We'll be looking at THREADING in a
+             * couple modules from now ...
+             */
+            ClientSocketStruct clientSocketSt;
+            clientSocketSt.clientSocket = client_socket;
+
+            memset(clientSocketSt.userId, 0, USER_ID_LENGTH);
+            strcpy(clientSocketSt.userId, userId);
+
+            if (pthread_create(&(ConnectedClientsList[ConnectedClientsCount].tid), NULL, socketThread, (void *)&clientSocketSt))
+            {
+                printf("[CHAT SERVER] : Socket Thread execution FAILED\n");
+                fflush(stdout);
+                return 5;
+            }
+            else
+            {
+                ConnectedClientsList[ConnectedClientsCount].client_socket = client_socket;
+                ConnectedClientsList[ConnectedClientsCount].client_addr = &client_addr;
+                strcpy(ConnectedClientsList[ConnectedClientsCount].userId, userId);
+                ConnectedClientsCount++;
+            }
+
             fflush(stdout);
-            return 5;
         }
-
-        /*
-         * rather than fork and spawn the execution of the command within a
-         * child task - let's take a look at something else we could do ...
-         *
-         * ... we'll create a thread of execution within this task to take
-         * care of executing the task.  We'll be looking at THREADING in a
-         * couple modules from now ...
-         */
-        ClientSocketStruct clientSocketSt;
-        clientSocketSt.clientSocket = client_socket;
-
-        memset(clientSocketSt.userId, 0, USER_ID_LENGTH);
-        strcpy(clientSocketSt.userId, userId);
-
-        if (pthread_create(&(ConnectedClientsList[ConnectedClientsCount].tid), NULL, socketThread, (void *)&clientSocketSt))
-        {
-            printf("[CHAT SERVER] : Socket Thread execution FAILED\n");
-            fflush(stdout);
-            return 5;
-        }
-        else
-        {
-            ConnectedClientsList[ConnectedClientsCount].client_socket = client_socket;
-            ConnectedClientsList[ConnectedClientsCount].client_addr = &client_addr;
-            strcpy(ConnectedClientsList[ConnectedClientsCount].userId, userId);
-            ConnectedClientsCount++;
-        }
-
-        fflush(stdout);
     }
 
     fflush(stdout);
-
-    // once we reach No of clients - let's go into a busy "join" loop waiting for
-    // all of the clients to finish and join back up to this main thread
 
     for (i = 0; i < NO_OF_CLIENTS; i++)
     {
@@ -196,7 +210,6 @@ int InitChatServer(void)
     }
 
     // exiting message thread
-    exitMessageThread = 1;
     int joinStatus = pthread_join(messageThreadId, (void *)(&whichClient));
     if (joinStatus == 0)
     {
@@ -258,7 +271,7 @@ void *socketThread(void *_clientSocketSt)
     UpdateConnectedClientListOnDelete(clSocket);
 
     // the return status will be the client # of this thread
-    printf("[CHAT SERVER] (Thread-%02d) : closing socket\n", iAmClient);
+    printf("[CHAT SERVER] : (Thread-%02d) closing socket\n", iAmClient);
     timeToExit = iAmClient;
     pthread_exit((void *)(&timeToExit));
 }
@@ -269,7 +282,7 @@ void *socketThread(void *_clientSocketSt)
 
 void *messageThread(void *dummy)
 {
-    while (exitMessageThread == 0)
+    while (exitCalled == 0)
     {
         if (MessageQueueCount > 0)
         {

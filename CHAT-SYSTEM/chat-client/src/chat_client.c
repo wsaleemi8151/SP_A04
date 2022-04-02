@@ -309,7 +309,7 @@ void *outputWindowThread(void *dummy)
         char timestamp[9];
 
         struct tm *ptm = localtime(&current_time);
-        strftime(timestamp, 9, "%2H:%2M:%2S", ptm);
+        strftime(timestamp, 9, "%H:%M:%S", ptm);
 
         char outputMesg[INPUT_MESG_LENGTH];
         sprintf(outputMesg, "%-67s %s\n", buf, timestamp);
