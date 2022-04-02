@@ -1,10 +1,4 @@
-/* splitWin.c is a simple example to show how to deal with split screens.
-   Due to the limited time, this program is not finished yet.
-
-   To compile:   gcc splitWin.c -lncurses
-
-        Sam Hsu (11/17/10)
-*/
+/* ncurses help: Sam Hsu (11/17/10) */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,12 +31,13 @@ static int clientActive = 0;
 
 static pthread_t inputWindowThreadId;
 static pthread_t outputWindowThreadId;
-char userId[10];
+char userId[USER_ID_LENGTH];
 
 int main(int argc, char *argv[])
 {
     struct sockaddr_in server_addr;
     struct hostent *host;
+    char buf[INPUT_MESG_LENGTH];
 
     char serverName[30];
 
@@ -72,7 +67,7 @@ int main(int argc, char *argv[])
      */
     if ((host = gethostbyname(serverName)) == NULL)
     {
-        printf("[CLIENT] : Host Info Search - FAILED\n");
+        printf("[CHAT CLIENT] : Host Info Search - FAILED\n");
         return 2;
     }
 
@@ -87,7 +82,8 @@ int main(int argc, char *argv[])
     // Thread to dispatch received messages to all clients
     if (pthread_create(&inputWindowThreadId, NULL, inputWindowThread, (void *)&dummy))
     {
-        printf("[SERVER] : inputWindowThread() FAILED\n");
+        sprintf(buf, "[CHAT CLIENT] : Input Window Thread FAILED\n");
+        display_win(output_win, buf, 1, CLEAR_WINDOW);
         fflush(stdout);
         return 5;
     }
@@ -95,7 +91,8 @@ int main(int argc, char *argv[])
     // Thread to dispatch received messages to all clients
     if (pthread_create(&outputWindowThreadId, NULL, outputWindowThread, (void *)&dummy))
     {
-        printf("[SERVER] : outputWindowThread() FAILED\n");
+        sprintf(buf, "[CHAT CLIENT] : Output Window Thread() FAILED\n");
+        display_win(output_win, buf, 1, CLEAR_WINDOW);
         fflush(stdout);
         return 5;
     }
@@ -103,17 +100,22 @@ int main(int argc, char *argv[])
     int joinStatus = pthread_join(inputWindowThreadId, (void *)(&dummy));
     if (joinStatus == 0)
     {
-        printf("\n[SERVER] : Input Message thread completed");
+        sprintf(buf, "\n[CHAT CLIENT] : Input Message thread completed");
+        display_win(output_win, buf, 1, CLEAR_WINDOW);
     }
+
+    sleep(0.5f);
 
     joinStatus = pthread_join(outputWindowThreadId, (void *)(&dummy));
     if (joinStatus == 0)
     {
-        printf("\n[SERVER] : Output Message thread completed");
+        sprintf(buf, "\n[CHAT CLIENT] : Output Message thread completed");
+        display_win(output_win, buf, 1, CLEAR_WINDOW);
     }
 
-    char buf[INPUT_MESG_LENGTH];
-    sprintf(buf, "[CLIENT] : I'm outta here !\n");
+    sleep(0.5f);
+
+    sprintf(buf, "[CHAT CLIENT] : I'm outta here !\n");
     display_win(output_win, buf, 1, CLEAR_WINDOW);
 
     // ----------------------------------------------------------------------------------------------
@@ -185,17 +187,15 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
     /*
      * get a socket for communications
      */
-    sprintf(buf, "[CLIENT] : Getting STREAM Socket to talk to SERVER\n");
+    sprintf(buf, "[CHAT CLIENT] : Getting STREAM Socket to talk to SERVER\n");
     display_win(output_win, buf, 1, CLEAR_WINDOW);
-    sleep(1);
+    sleep(0.5f);
 
     fflush(stdout);
     if ((my_server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         sprintf(buf, "[CLIENT] : Getting Client Socket - FAILED\n");
         display_win(output_win, buf, 1, CLEAR_WINDOW);
-
-        sleep(1);
 
         destroy_win(chat_win);
         destroy_win(output_win);
@@ -209,7 +209,7 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
      */
     sprintf(buf, "[CLIENT] : Connecting to SERVER\n");
     display_win(output_win, buf, 1, CLEAR_WINDOW);
-    sleep(1);
+    sleep(0.5);
 
     fflush(stdout);
     if (connect(my_server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
@@ -217,8 +217,6 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
         sprintf(buf, "[CLIENT] : Connect to Server - FAILED\n");
         display_win(output_win, buf, 1, CLEAR_WINDOW);
         close(my_server_socket);
-
-        sleep(1);
 
         destroy_win(chat_win);
         destroy_win(output_win);
@@ -230,8 +228,8 @@ int InitializeChatSocket(struct sockaddr_in server_addr, struct hostent *host)
     {
         // send user id as first message
         /* clear out the contents of buffer (if any) */
-        char uId[10];
-        memset(uId, 0, 10);
+        char uId[USER_ID_LENGTH];
+        memset(uId, 0, USER_ID_LENGTH);
         sprintf(uId, "-user%s", userId);
         write(my_server_socket, uId, strlen(uId));
     }

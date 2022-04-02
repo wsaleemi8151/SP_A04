@@ -54,10 +54,10 @@ int InitChatServer(void)
 
     if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-        printf("[SERVER] : socket() FAILED\n");
+        printf("[CHAT SERVER] : socket() FAILED\n");
         return 1;
     }
-    printf("[SERVER] : socket() successful\n");
+    printf("[CHAT SERVER] : socket() successful\n");
 
     /*
      * initialize our server address info for binding purposes
@@ -69,27 +69,27 @@ int InitChatServer(void)
 
     if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        printf("[SERVER] : bind() FAILED\n");
+        printf("[CHAT SERVER] : bind() FAILED\n");
         close(server_socket);
         return 2;
     }
-    printf("[SERVER] : bind() successful\n");
+    printf("[CHAT SERVER] : bind() successful\n");
 
     /*
      * start listening on the socket
      */
     if (listen(server_socket, 5) < 0)
     {
-        printf("[SERVER] : listen() - FAILED.\n");
+        printf("[CHAT SERVER] : listen() - FAILED.\n");
         close(server_socket);
         return 3;
     }
-    printf("[SERVER] : listen() successful\n");
+    printf("[CHAT SERVER] : listen() successful\n");
 
     // Thread to dispatch received messages to all clients
     if (pthread_create(&messageThreadId, NULL, messageThread, (void *)&client_socket))
     {
-        printf("[SERVER] : messageThread() FAILED\n");
+        printf("[CHAT SERVER] : Message Thread execution FAILED\n");
         fflush(stdout);
         return 5;
     }
@@ -103,7 +103,7 @@ int InitChatServer(void)
      */
     while (ConnectedClientsCount < NO_OF_CLIENTS)
     {
-        printf("[SERVER] : Ready to accept()\n");
+        printf("[CHAT SERVER] : Ready to accept()\n");
         fflush(stdout);
 
         /*
@@ -112,18 +112,20 @@ int InitChatServer(void)
         client_len = sizeof(client_addr);
         if ((client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len)) < 0)
         {
-            printf("[SERVER] : accept() FAILED\n");
+            printf("[CHAT SERVER] : accept() FAILED\n");
             fflush(stdout);
             return 4;
         }
 
-        printf("[SERVER] : received a packet from CLIENT-%02d\n", ConnectedClientsCount);
         fflush(stdout);
 
         // reading user id
-        char userId[10];
+        char userId[USER_ID_LENGTH];
 
         char buffer[INPUT_MESG_LENGTH];
+
+        // clear out and get the next command and process
+        memset(buffer, 0, INPUT_MESG_LENGTH);
         int numBytesRead = read(client_socket, buffer, INPUT_MESG_LENGTH);
         if (checkPrefix(userPrefix, buffer) == 0)
         {
@@ -133,10 +135,11 @@ int InitChatServer(void)
         }
         else
         {
-            printf("[SERVER] : Invalid User Id\n");
+            printf("[CHAT SERVER] : Invalid User Id\n");
             fflush(stdout);
             return 5;
         }
+
         /*
          * rather than fork and spawn the execution of the command within a
          * child task - let's take a look at something else we could do ...
@@ -145,16 +148,15 @@ int InitChatServer(void)
          * care of executing the task.  We'll be looking at THREADING in a
          * couple modules from now ...
          */
-
         ClientSocketStruct clientSocketSt;
         clientSocketSt.clientSocket = client_socket;
 
-        memset(clientSocketSt.userId, 0, 10);
+        memset(clientSocketSt.userId, 0, USER_ID_LENGTH);
         strcpy(clientSocketSt.userId, userId);
 
         if (pthread_create(&(ConnectedClientsList[ConnectedClientsCount].tid), NULL, socketThread, (void *)&clientSocketSt))
         {
-            printf("[SERVER] : pthread_create() FAILED\n");
+            printf("[CHAT SERVER] : Socket Thread execution FAILED\n");
             fflush(stdout);
             return 5;
         }
@@ -164,26 +166,22 @@ int InitChatServer(void)
             ConnectedClientsList[ConnectedClientsCount].client_addr = &client_addr;
             strcpy(ConnectedClientsList[ConnectedClientsCount].userId, userId);
             ConnectedClientsCount++;
-
-            // strcpy(ConnectedClientsList[ConnectedClientsCount].userId, "");
         }
 
-        printf("[SERVER] : pthread_create() successful for CLIENT-%02d\n", ConnectedClientsCount);
         fflush(stdout);
     }
 
-    printf("[SERVER] : messageThread() successful");
     fflush(stdout);
 
     // once we reach No of clients - let's go into a busy "join" loop waiting for
     // all of the clients to finish and join back up to this main thread
-    printf("\n[SERVER] : Now we wait for the threads to complete ... \n");
+
     for (i = 0; i < NO_OF_CLIENTS; i++)
     {
         int joinStatus = pthread_join(ConnectedClientsList[ConnectedClientsCount].tid, (void *)(&whichClient));
         if (joinStatus == 0)
         {
-            printf("\n[SERVER] : received QUIT command from CLIENT-%02d (joinStatus=%d)\n", whichClient, joinStatus);
+            printf("\n[CHAT SERVER] : Received QUIT command from CLIENT-%02d (joinStatus=%d)\n", whichClient, joinStatus);
         }
     }
 
@@ -192,10 +190,10 @@ int InitChatServer(void)
     int joinStatus = pthread_join(messageThreadId, (void *)(&whichClient));
     if (joinStatus == 0)
     {
-        printf("\n[SERVER] : Message thread completed");
+        printf("\n[CHAT SERVER] : Message thread completed");
     }
 
-    printf("\n[SERVER] : All clients have returned - exiting ...\n");
+    printf("\n[CHAT SERVER] : All clients have returned - exiting ...\n");
     close(server_socket);
     return 0;
 }
@@ -226,16 +224,15 @@ void *socketThread(void *_clientSocketSt)
 
     numBytesRead = read(clSocket, buffer, INPUT_MESG_LENGTH);
 
+    memset(message, 0, INPUT_MESG_LENGTH);
     while (strcmp(buffer, "quit") != 0)
     {
-        memset(message, 0, INPUT_MESG_LENGTH);
         /* we're actually not going to execute the command - but we could if we wanted */
         sprintf(message, "[SERVER (Thread-%02d)] : %s Received %d bytes - command - %s\n", iAmClient, clientSocketSt.userId, numBytesRead, buffer);
 
         if (MessageQueueCount < MESSAGE_QUEUE_LENGTH)
         {
             // Update message queue when a message received
-            printf("Client Socket: %d\n", clSocket);
             MessageQueue[MessageQueueCount].client_socket = clSocket;
             strcpy(MessageQueue[MessageQueueCount].message, message);
             strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
@@ -243,7 +240,7 @@ void *socketThread(void *_clientSocketSt)
         }
         else
         {
-            printf("\n[SERVER] : Message Queue already full ...\n");
+            printf("\n[CHAT SERVER] : Message Queue already full ...\n");
         }
         // clear out and get the next command and process
         memset(buffer, 0, INPUT_MESG_LENGTH);
@@ -255,8 +252,8 @@ void *socketThread(void *_clientSocketSt)
 
     // the return status will be the client # of this thread
     // timeToExit = iAmClient;
-    // pthread_exit((void *)(timeToExit));
-    printf("[SERVER (Thread-%02d)] : closing socket\n", iAmClient);
+    // pthread_exit((void *)(&timeToExit));
+    printf("[CHAT SERVER (Thread-%02d)] : closing socket\n", iAmClient);
 
     return 0;
 }
@@ -269,14 +266,12 @@ void *messageThread(void *dummy)
 {
     while (exitMessageThread == 0)
     {
-        // printf("\n--------------------Message thread executed Message count: %d\n\n", MessageQueueCount);
         if (MessageQueueCount > 0)
         {
             for (size_t posMesg = 0; posMesg < MessageQueueCount; posMesg++)
             {
                 for (size_t posClient = 0; posClient < ConnectedClientsCount; posClient++)
                 {
-                    printf("Client Socket: %d, Message: %s \n", ConnectedClientsList[posClient].client_socket, MessageQueue[posMesg].message);
                     write(ConnectedClientsList[posClient].client_socket, MessageQueue[posMesg].message, strlen(MessageQueue[posMesg].message));
                 }
 
