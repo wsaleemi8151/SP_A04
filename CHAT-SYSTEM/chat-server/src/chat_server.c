@@ -255,41 +255,7 @@ void *socketThread(void *_clientSocketSt)
         if (MessageQueueCount < MESSAGE_QUEUE_LENGTH && strlen(message) > 0)
         {
             // Update message queue when a message received
-            MessageQueue[MessageQueueCount].client_socket = clSocket;
-
-            if (strlen(message) > SINGLE_MESG_MAX_LENGTH)
-            {
-                // if no space found in between 35 to 40, then split at position 40
-                int messageSplitter = SINGLE_MESG_MAX_LENGTH;
-                for (size_t i = 35; i < SINGLE_MESG_MAX_LENGTH + 1; i++)
-                {
-                    // if space found
-                    if ((int)message[i] == 32)
-                    {
-                        messageSplitter = i;
-                        break;
-                    }
-                }
-
-                char firstMesg[SINGLE_MESG_MAX_LENGTH];
-                strncpy(firstMesg, &message[0], messageSplitter);
-                char secondMesg[SINGLE_MESG_MAX_LENGTH];
-                strncpy(secondMesg, &message[messageSplitter], strlen(message) - messageSplitter);
-
-                strcpy(MessageQueue[MessageQueueCount].message, firstMesg);
-                strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
-                MessageQueueCount++;
-
-                strcpy(MessageQueue[MessageQueueCount].message, secondMesg);
-                strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
-                MessageQueueCount++;
-            }
-            else
-            {
-                strcpy(MessageQueue[MessageQueueCount].message, message);
-                strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
-                MessageQueueCount++;
-            }
+            ParseMessage(message, clSocket, clientSocketSt.userId);
         }
 
         // clear out and get the next command and process
@@ -304,6 +270,48 @@ void *socketThread(void *_clientSocketSt)
     printf("[CHAT SERVER] : (Thread-%02d) closing socket\n", iAmClient);
     timeToExit = iAmClient;
     pthread_exit((void *)(&timeToExit));
+}
+
+void ParseMessage(char *message, int clSocket, char *userId)
+{
+    MessageQueue[MessageQueueCount].client_socket = clSocket;
+
+    if (strlen(message) > SINGLE_MESG_MAX_LENGTH)
+    {
+        // if no space found in between 35 to 40, then split at position 40
+        int messageSplitter = SINGLE_MESG_MAX_LENGTH;
+        for (size_t i = 35; i < SINGLE_MESG_MAX_LENGTH + 1; i++)
+        {
+            // if space found
+            if ((int)message[i] == 32)
+            {
+                messageSplitter = i;
+                break;
+            }
+        }
+
+        char firstMesg[SINGLE_MESG_MAX_LENGTH];
+        memset(firstMesg, 0, SINGLE_MESG_MAX_LENGTH);
+        strncpy(firstMesg, &message[0], messageSplitter);
+
+        strcpy(MessageQueue[MessageQueueCount].message, firstMesg);
+        strcpy(MessageQueue[MessageQueueCount].userId, userId);
+        MessageQueueCount++;
+
+        char secondMesg[SINGLE_MESG_MAX_LENGTH];
+        memset(secondMesg, 0, SINGLE_MESG_MAX_LENGTH);
+        strncpy(secondMesg, &message[messageSplitter], (strlen(message) - messageSplitter) ? (strlen(message) - messageSplitter) : SINGLE_MESG_MAX_LENGTH);
+
+        strcpy(MessageQueue[MessageQueueCount].message, secondMesg);
+        strcpy(MessageQueue[MessageQueueCount].userId, userId);
+        MessageQueueCount++;
+    }
+    else
+    {
+        strcpy(MessageQueue[MessageQueueCount].message, message);
+        strcpy(MessageQueue[MessageQueueCount].userId, userId);
+        MessageQueueCount++;
+    }
 }
 
 //

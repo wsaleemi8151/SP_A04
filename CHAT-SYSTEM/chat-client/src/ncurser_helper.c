@@ -36,34 +36,33 @@ void input_win(WINDOW *win, char *word)
     wmove(win, 1, 1); /* position cusor at top */
     for (i = 0; (ch = wgetch(win)) != '\n'; i++)
     {
-        word[i] = ch;           /* '\n' not copied */
-        if (col++ < maxcol - 2) /* if within window */
+        if (strlen(word) < INPUT_MESG_LENGTH - 1)
         {
-            wprintw(win, "%c", word[i]); /* display the char recv'd */
-        }
-        else /* last char pos reached */
-        {
-            col = 1;
-            if (row == maxrow - 2) /* last line in the window */
+
+            word[i] = ch;           /* '\n' not copied */
+            if (col++ < maxcol - 2) /* if within window */
             {
-                scroll(win);          /* go up one line */
-                row = maxrow - 2;     /* stay at the last line */
-                wmove(win, row, col); /* move cursor to the beginning */
-                wclrtoeol(win);       /* clear from cursor to eol */
-                box(win, 0, 0);       /* draw the box again */
-            }
-            else
-            {
-                row++;
-                wmove(win, row, col); /* move cursor to the beginning */
-                wrefresh(win);
                 wprintw(win, "%c", word[i]); /* display the char recv'd */
             }
-        }
-
-        if(strlen(word) == INPUT_MESG_LENGTH)
-        {
-            break;
+            else /* last char pos reached */
+            {
+                col = 1;
+                if (row == maxrow - 2) /* last line in the window */
+                {
+                    scroll(win);          /* go up one line */
+                    row = maxrow - 2;     /* stay at the last line */
+                    wmove(win, row, col); /* move cursor to the beginning */
+                    wclrtoeol(win);       /* clear from cursor to eol */
+                    box(win, 0, 0);       /* draw the box again */
+                }
+                else
+                {
+                    row++;
+                    wmove(win, row, col); /* move cursor to the beginning */
+                    wrefresh(win);
+                    wprintw(win, "%c", word[i]); /* display the char recv'd */
+                }
+            }
         }
     }
 } /* input_win */
