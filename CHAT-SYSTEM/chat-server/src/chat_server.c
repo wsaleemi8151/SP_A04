@@ -202,7 +202,7 @@ int InitChatServer(void)
 
     for (i = 0; i < NO_OF_CLIENTS; i++)
     {
-        int joinStatus = pthread_join(ConnectedClientsList[ConnectedClientsCount].tid, (void *)(&whichClient));
+        int joinStatus = pthread_join(ConnectedClientsList[i].tid, (void *)(&whichClient));
         if (joinStatus == 0)
         {
             printf("\n[CHAT SERVER] : Received QUIT command from CLIENT-%02d (joinStatus=%d)\n", whichClient, joinStatus);
@@ -290,14 +290,23 @@ void *messageThread(void *dummy)
             {
                 for (size_t posClient = 0; posClient < ConnectedClientsCount; posClient++)
                 {
+                    // Help retreived from: How to get ip address from sock structure in c?
+                    // https://stackoverflow.com/questions/3060950/how-to-get-ip-address-from-sock-structure-in-c
+
+                    struct sockaddr_in *pV4Addr = (struct sockaddr_in *)&ConnectedClientsList[posClient].client_addr;
+                    struct in_addr ipAddr = ConnectedClientsList[posClient].client_addr->sin_addr;
+                    char str[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &ipAddr, str, INET_ADDRSTRLEN);
+                    printf("%-16s", str);
+
                     char buffer[INPUT_MESG_LENGTH];
                     if (ConnectedClientsList[posClient].client_socket == MessageQueue[posMesg].client_socket)
                     {
-                        sprintf(buffer, "%-15d [%-5s] >> %s", MessageQueue[posMesg].client_socket, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
+                        sprintf(buffer, "%-16s [%-5s] >> %s", str, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
                     }
                     else
                     {
-                        sprintf(buffer, "%-15d [%-5s] << %s", MessageQueue[posMesg].client_socket, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
+                        sprintf(buffer, "%-16s [%-5s] << %s", str, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
                     }
 
                     write(ConnectedClientsList[posClient].client_socket, buffer, strlen(buffer));
