@@ -249,15 +249,15 @@ void *inputWindowThread(void *dummy)
     display_window_row_count = 1;
     while (clientActive)
     {
-        /* clear out the contents of buffer (if any) */
-        memset(buf, 0, INPUT_MESG_LENGTH);
         blankWin(chat_win);
-
         /*
          * now that we have a connection, get a commandline from
          * the user, and fire it off to the server
          */
         fflush(stdout);
+
+        /* clear out the contents of buffer (if any) */
+        memset(buf, 0, INPUT_MESG_LENGTH);
 
         input_win(chat_win, buf);
 
@@ -273,7 +273,10 @@ void *inputWindowThread(void *dummy)
         }
         else
         {
-            write(my_server_socket, buf, strlen(buf));
+            if (strlen(buf) > 0)
+            {
+                write(my_server_socket, buf, strlen(buf));
+            }
         }
     }
 }
@@ -307,14 +310,27 @@ void *outputWindowThread(void *dummy)
         time_t current_time;
         current_time = time(NULL);
         char timestamp[9];
+        memset(timestamp, 0, 9);
 
         struct tm *ptm = localtime(&current_time);
         strftime(timestamp, 9, "%H:%M:%S", ptm);
 
         char outputMesg[INPUT_MESG_LENGTH];
+        /* clear out the contents of buffer (if any) */
+        memset(outputMesg, 0, INPUT_MESG_LENGTH);
+
         sprintf(outputMesg, "%-67s %s\n", buf, timestamp);
 
         display_win(output_win, outputMesg, display_window_row_count, NOT_CLEAR_WINDOW);
-        display_window_row_count++;
+        
+        // if
+        if (display_window_row_count == NUMBER_OF_MESSAGE_TO_PRINT)
+        {
+            display_window_row_count = 1;
+        }
+        else
+        {
+            display_window_row_count++;
+        }
     }
 }

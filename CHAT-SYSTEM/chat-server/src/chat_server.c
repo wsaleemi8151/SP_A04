@@ -104,7 +104,6 @@ int InitChatServer(void)
      */
     while (exitCalled == 0)
     {
-        sleep(3);
         if (ConnectedClientsCount >= NO_OF_CLIENTS)
         {
             exitCalled = 1;
@@ -238,28 +237,59 @@ void *socketThread(void *_clientSocketSt)
     ClientSocketStruct clientSocketSt = *((ClientSocketStruct *)_clientSocketSt);
     int clSocket = clientSocketSt.clientSocket;
 
-    /* Clear out the input Buffer */
-    memset(buffer, 0, INPUT_MESG_LENGTH);
-
     // increment the numClients
     int iAmClient = ConnectedClientsCount; // assumes that another connection from another client
                                            // hasn't been created in the meantime
 
+    /* Clear out the input Buffer */
+    memset(message, 0, INPUT_MESG_LENGTH);
+    memset(buffer, 0, INPUT_MESG_LENGTH);
+
     numBytesRead = read(clSocket, buffer, INPUT_MESG_LENGTH);
 
-    memset(message, 0, INPUT_MESG_LENGTH);
     while (strcmp(buffer, "quit") != 0)
     {
         sprintf(message, "%s", buffer);
 
         // storing received message in the message queue to be broadcast
-        if (MessageQueueCount < MESSAGE_QUEUE_LENGTH)
+        if (MessageQueueCount < MESSAGE_QUEUE_LENGTH && strlen(message) > 0)
         {
             // Update message queue when a message received
             MessageQueue[MessageQueueCount].client_socket = clSocket;
-            strcpy(MessageQueue[MessageQueueCount].message, message);
-            strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
-            MessageQueueCount++;
+
+            if (strlen(message) > SINGLE_MESG_MAX_LENGTH)
+            {
+                // if no space found in between 35 to 40, then split at position 40
+                int messageSplitter = SINGLE_MESG_MAX_LENGTH;
+                for (size_t i = 35; i < SINGLE_MESG_MAX_LENGTH + 1; i++)
+                {
+                    // if space found
+                    if ((int)message[i] == 32)
+                    {
+                        messageSplitter = i;
+                        break;
+                    }
+                }
+
+                char firstMesg[SINGLE_MESG_MAX_LENGTH];
+                strncpy(firstMesg, &message[0], messageSplitter);
+                char secondMesg[SINGLE_MESG_MAX_LENGTH];
+                strncpy(secondMesg, &message[messageSplitter], strlen(message) - messageSplitter);
+
+                strcpy(MessageQueue[MessageQueueCount].message, firstMesg);
+                strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
+                MessageQueueCount++;
+
+                strcpy(MessageQueue[MessageQueueCount].message, secondMesg);
+                strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
+                MessageQueueCount++;
+            }
+            else
+            {
+                strcpy(MessageQueue[MessageQueueCount].message, message);
+                strcpy(MessageQueue[MessageQueueCount].userId, clientSocketSt.userId);
+                MessageQueueCount++;
+            }
         }
 
         // clear out and get the next command and process
@@ -297,9 +327,12 @@ void *messageThread(void *dummy)
                     struct in_addr ipAddr = ConnectedClientsList[posClient].client_addr->sin_addr;
                     char str[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &ipAddr, str, INET_ADDRSTRLEN);
-                    printf("%-16s", str);
 
                     char buffer[INPUT_MESG_LENGTH];
+
+                    /* clear out the contents of buffer (if any) */
+                    memset(buffer, 0, INPUT_MESG_LENGTH);
+
                     if (ConnectedClientsList[posClient].client_socket == MessageQueue[posMesg].client_socket)
                     {
                         sprintf(buffer, "%-16s [%-5s] >> %s", str, MessageQueue[posMesg].userId, MessageQueue[posMesg].message);
