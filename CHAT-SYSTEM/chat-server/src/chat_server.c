@@ -204,7 +204,7 @@ int InitChatServer(void)
         int joinStatus = pthread_join(ConnectedClientsList[i].tid, (void *)(&whichClient));
         if (joinStatus == 0)
         {
-            printf("\n[CHAT SERVER] : Received QUIT command from CLIENT-%02d (joinStatus=%d)\n", whichClient, joinStatus);
+            printf("\n[CHAT SERVER] : Received >>bye<< command from CLIENT-%02d (joinStatus=%d)\n", whichClient, joinStatus);
         }
     }
 
@@ -247,7 +247,7 @@ void *socketThread(void *_clientSocketSt)
 
     numBytesRead = read(clSocket, buffer, INPUT_MESG_LENGTH);
 
-    while (strcmp(buffer, "quit") != 0)
+    while (strcmp(buffer, ">>bye<<") != 0)
     {
         sprintf(message, "%s", buffer);
 

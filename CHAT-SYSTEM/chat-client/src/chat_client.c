@@ -265,7 +265,7 @@ void *inputWindowThread(void *dummy)
             buf[strlen(buf) - 1] = '\0';
 
         /* check if the user wants to quit */
-        if (strcmp(buf, "quit") == 0)
+        if (strcmp(buf, ">>bye<<") == 0)
         {
             // send the command to the SERVER
             write(my_server_socket, buf, strlen(buf));
